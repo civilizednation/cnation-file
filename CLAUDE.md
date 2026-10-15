@@ -10,8 +10,7 @@
   - 저장 버튼: Web Share API로 공유 시트 → "파일에 저장". 공유가 안 되는 브라우저(PC 등)는 바로 다운로드
   - 확장자별 MIME(html, css, js, json, md 등), 다크모드 지원
 - 클립보드 읽기와 공유는 HTTPS에서만 동작함(`file://` 불가). Vercel 또는 GitHub Pages로 배포해서 쓰고, Safari "홈 화면에 추가"로 앱처럼 사용.
-- 실제 iPhone 기기 테스트는 아직 안 함.
-- 배포: Vercel에서 이 레포를 Import하면 별도 설정 없이 루트 `index.html`이 그대로 배포됨(아직 배포 여부 미확인).
+- 배포: GitHub Pages 사용 (Vercel은 VPN이 필요해서 사용자가 Pages를 선호). 아래 GitHub 커밋 기능 항목 참고.
 - 정리할 것: 잘못 올린 `cnation-ft` 레포의 `claude/clip-saver` 브랜치가 남아 있음(`main` 영향 없음). 사용자가 원하면 삭제.
 
 ## GitHub 커밋 기능 (PR #3로 main 머지, GitHub Pages 배포)
