@@ -1,4 +1,4 @@
-# cnation-file (Clip Saver)
+# cnation-file (앱 이름: cnation File, 옛 이름 Clip Saver)
 
 클립보드 내용을 원하는 파일명의 파일로 저장하는 개인용 웹앱. 이 레포의 작업 맥락을 정리한 메모입니다.
 
@@ -14,8 +14,15 @@
 - 배포: Vercel에서 이 레포를 Import하면 별도 설정 없이 루트 `index.html`이 그대로 배포됨(아직 배포 여부 미확인).
 - 정리할 것: 잘못 올린 `cnation-ft` 레포의 `claude/clip-saver` 브랜치가 남아 있음(`main` 영향 없음). 사용자가 원하면 삭제.
 
-## 다음 후보 작업: 앱에서 GitHub로 바로 커밋
-서버 없이 브라우저에서 GitHub REST API 직접 호출:
+## GitHub 커밋 기능 (구현됨, `claude/github-commit` 브랜치)
+- 파일: `index.html`(앱), `apple-touch-icon.png`·`icon-192.png`·`icon-512.png`(임시 아이콘, Python PIL로 생성), `manifest.webmanifest`
+- 배포 계획: 사용자가 GitHub Pages로 배포하고 iPhone 홈 화면에 추가해서 사용
+- 토큰 저장: localStorage `clipSaver.ghToken`. 홈 화면 웹앱은 Safari와 저장소가 분리되고 ITP 7일 삭제 대상이 아님. `navigator.storage.persist()` 요청. 토큰 입력칸은 username+password 폼이라 iCloud 키체인 자동완성으로 복구 가능. PIN 잠금은 쓰지 않기로 함
+- 링크를 아는 타인은 토큰이 없으므로 커밋 불가. 토큰을 코드나 인증 없는 서버 함수에 넣지 말 것
+- 레포/브랜치/폴더 선택 기억, 기존 파일 덮어쓰기 전 확인창, 커밋 메시지 비우면 자동 생성
+- Playwright + 모의 GitHub API로만 테스트함. 실제 기기·실제 API 테스트는 아직
+
+설계 메모:
 1. 인증: Fine-grained PAT(대상 레포만, `Contents: Read and write`)를 앱에 한 번 입력해서 localStorage에 저장
 2. 레포/브랜치/경로 선택: `GET /user/repos` 등으로 목록을 불러와 드롭다운
 3. 업로드+커밋: `PUT /repos/{owner}/{repo}/contents/{path}`. 내용은 base64(UTF-8 안전하게 인코딩), 커밋 메시지 포함. 기존 파일 덮어쓰기는 먼저 GET으로 `sha`를 받아 함께 전송

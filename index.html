@@ -4,7 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Clip Saver</title>
+<meta name="apple-mobile-web-app-title" content="cnation File">
+<title>cnation File</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
   :root {
     --bg: #f5f5f7; --card: #fff; --text: #1d1d1f; --muted: #6e6e73;
@@ -25,12 +29,12 @@
   main { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
   h1 { font-size: 22px; margin: 4px 0; }
   label { font-size: 13px; color: var(--muted); }
-  input, textarea {
+  input, textarea, select {
     width: 100%; font: inherit; color: var(--text); background: var(--card);
     border: 1px solid var(--border); border-radius: 10px; padding: 12px;
   }
   /* 16px 이상이어야 iOS가 포커스 시 자동 확대하지 않음 */
-  input { font-size: 16px; }
+  input, select { font-size: 16px; }
   textarea { font: 14px/1.4 ui-monospace, Menlo, monospace; min-height: 45vh; resize: vertical; }
   .row { display: flex; gap: 8px; }
   button {
@@ -39,6 +43,15 @@
   }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   button:active { opacity: .7; }
+  button:disabled { opacity: .5; }
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; }
+  summary { padding: 12px 0; font-weight: 600; cursor: pointer; }
+  details > div { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
+  details input, details select { background: var(--bg); }
+  .hint { font-size: 13px; color: var(--muted); margin: 0; }
+  .hint a { color: var(--accent); }
+  #target { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); word-break: break-all; }
+  #status a { color: inherit; }
   #status { min-height: 1.4em; font-size: 14px; color: var(--muted); }
   #status.ok { color: var(--ok); }
   #status.err { color: var(--err); }
@@ -46,7 +59,7 @@
 </head>
 <body>
 <main>
-  <h1>📋 Clip Saver</h1>
+  <h1>📋 cnation File</h1>
 
   <div>
     <label for="filename">파일명</label>
@@ -63,8 +76,50 @@
     <textarea id="content" placeholder="여기에 붙여넣거나 위 버튼을 누르세요" spellcheck="false"></textarea>
   </div>
 
-  <button id="saveBtn" class="primary">💾 기기에 저장</button>
+  <div class="row">
+    <button id="saveBtn" class="primary">💾 기기에 저장</button>
+    <button id="commitBtn" class="primary">⬆️ GitHub 커밋</button>
+  </div>
+  <div id="target"></div>
   <div id="status"></div>
+
+  <details id="ghPanel">
+    <summary>⚙️ GitHub 설정 <span id="ghState"></span></summary>
+    <div>
+      <form id="tokenForm">
+        <!-- username + password 필드가 있어야 iCloud 키체인이 토큰을 저장/자동완성함 -->
+        <input name="username" autocomplete="username" value="github-token" hidden readonly>
+        <label for="token">GitHub 토큰 (Fine-grained PAT)</label>
+        <input id="token" name="password" type="password" autocomplete="current-password"
+               placeholder="github_pat_..." autocapitalize="off" autocorrect="off" spellcheck="false">
+        <div class="row" style="margin-top:8px">
+          <button type="submit">토큰 저장 · 레포 불러오기</button>
+          <button type="button" id="forgetBtn">토큰 삭제</button>
+        </div>
+      </form>
+      <p class="hint">
+        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">토큰 만들기</a>:
+        Repository access는 올릴 레포만 선택, Permissions는 <b>Contents: Read and write</b>, 만료일 지정.
+        토큰은 이 기기에만 저장됩니다.
+      </p>
+      <div>
+        <label for="repo">레포</label>
+        <select id="repo"><option value="">토큰을 먼저 저장하세요</option></select>
+      </div>
+      <div>
+        <label for="branch">브랜치</label>
+        <select id="branch"></select>
+      </div>
+      <div>
+        <label for="folder">폴더 경로 (비우면 레포 루트)</label>
+        <input id="folder" placeholder="예: docs/notes" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div>
+        <label for="message">커밋 메시지 (비우면 자동 생성)</label>
+        <input id="message" placeholder="Update index.html via cnation File">
+      </div>
+    </div>
+  </details>
 </main>
 
 <script>
@@ -129,6 +184,172 @@
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     setStatus(`"${name}" 다운로드 시작`, 'ok');
   });
+  // ───────── GitHub 커밋 ─────────
+  const KEY = { token: 'clipSaver.ghToken', repo: 'clipSaver.repo', branch: 'clipSaver.branch', folder: 'clipSaver.folder' };
+  const store = {
+    get: (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+    set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} }
+  };
+  const repoEl = $('repo'), branchEl = $('branch'), folderEl = $('folder'), tokenEl = $('token');
+  folderEl.value = store.get(KEY.folder);
+
+  // Safari가 오래 안 쓴 사이트 저장소를 지우지 않도록 영구 저장 요청 (지원 브라우저만)
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+  async function gh(path, opts = {}) {
+    const res = await fetch('https://api.github.com' + path, {
+      ...opts,
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: 'Bearer ' + store.get(KEY.token),
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(opts.body ? { 'Content-Type': 'application/json' } : {})
+      }
+    });
+    const data = res.status === 204 ? null : await res.json().catch(() => null);
+    if (!res.ok) {
+      const err = new Error((data && data.message) || ('HTTP ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  const encPath = (p) => p.split('/').map(encodeURIComponent).join('/');
+  function toBase64(text) {
+    const bytes = new TextEncoder().encode(text); // 한글 등 UTF-8 안전 처리
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function filePath() {
+    const folder = folderEl.value.trim().replace(/^\/+|\/+$/g, '');
+    const name = nameEl.value.trim() || 'index.html';
+    return folder ? folder + '/' + name : name;
+  }
+  function updateTarget() {
+    $('ghState').textContent = store.get(KEY.token) ? '✅' : '(토큰 없음)';
+    $('target').textContent = repoEl.value && branchEl.value
+      ? `커밋 대상 → ${repoEl.value} @ ${branchEl.value} : ${filePath()}` : '';
+  }
+  function friendly(e) {
+    if (e.status === 401) return '토큰이 만료되었거나 잘못되었습니다. GitHub 설정에서 토큰을 다시 입력하세요';
+    if (e.status === 403) return '권한이 없습니다. 토큰에 이 레포의 Contents: Read and write 권한이 있는지 확인하세요';
+    if (e.status === 404) return '레포나 브랜치를 찾을 수 없습니다 (토큰의 레포 접근 범위 확인)';
+    if (e.status === 409) return '충돌: 그 사이 파일이 바뀌었습니다. 다시 시도하세요';
+    return e.message || String(e);
+  }
+
+  async function loadRepos() {
+    repoEl.innerHTML = '';
+    repoEl.add(new Option('불러오는 중…', ''));
+    try {
+      const repos = await gh('/user/repos?per_page=100&sort=pushed');
+      repoEl.innerHTML = '';
+      if (!repos.length) repoEl.add(new Option('접근 가능한 레포가 없습니다', ''));
+      for (const r of repos) repoEl.add(new Option(r.full_name, r.full_name));
+      const saved = store.get(KEY.repo);
+      if (saved && repos.some((r) => r.full_name === saved)) repoEl.value = saved;
+      await loadBranches();
+    } catch (e) {
+      repoEl.innerHTML = '';
+      repoEl.add(new Option('레포를 불러오지 못했습니다', ''));
+      setStatus(friendly(e), 'err');
+    }
+    updateTarget();
+  }
+
+  async function loadBranches() {
+    branchEl.innerHTML = '';
+    const repo = repoEl.value;
+    if (!repo) return updateTarget();
+    store.set(KEY.repo, repo);
+    try {
+      const [info, branches] = await Promise.all([
+        gh(`/repos/${repo}`),
+        gh(`/repos/${repo}/branches?per_page=100`)
+      ]);
+      for (const b of branches) branchEl.add(new Option(b.name, b.name));
+      const saved = store.get(KEY.branch);
+      branchEl.value = saved && branches.some((b) => b.name === saved) ? saved : info.default_branch;
+    } catch (e) {
+      setStatus(friendly(e), 'err');
+    }
+    updateTarget();
+  }
+
+  $('tokenForm').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const t = tokenEl.value.trim();
+    if (!t) return setStatus('토큰을 입력하세요', 'err');
+    store.set(KEY.token, t);
+    tokenEl.value = '';
+    setStatus('토큰 저장됨', 'ok');
+    loadRepos();
+  });
+  $('forgetBtn').addEventListener('click', () => {
+    if (!confirm('이 기기에 저장된 GitHub 토큰을 삭제할까요?')) return;
+    store.set(KEY.token, '');
+    repoEl.innerHTML = ''; repoEl.add(new Option('토큰을 먼저 저장하세요', ''));
+    branchEl.innerHTML = '';
+    setStatus('토큰 삭제됨');
+    updateTarget();
+  });
+  repoEl.addEventListener('change', () => { store.set(KEY.branch, ''); loadBranches(); });
+  branchEl.addEventListener('change', () => { store.set(KEY.branch, branchEl.value); updateTarget(); });
+  folderEl.addEventListener('input', () => { store.set(KEY.folder, folderEl.value.trim()); updateTarget(); });
+  nameEl.addEventListener('input', updateTarget);
+
+  $('commitBtn').addEventListener('click', async () => {
+    const text = contentEl.value;
+    if (!text) return setStatus('커밋할 내용이 없습니다', 'err');
+    if (!store.get(KEY.token)) {
+      $('ghPanel').open = true;
+      return setStatus('GitHub 토큰이 없습니다. 아래 설정에서 입력하세요', 'err');
+    }
+    const repo = repoEl.value, branch = branchEl.value;
+    if (!repo || !branch) { $('ghPanel').open = true; return setStatus('레포와 브랜치를 선택하세요', 'err'); }
+
+    const path = filePath();
+    const name = path.split('/').pop();
+    try { localStorage.setItem('clipSaver.filename', name); } catch {}
+    const btn = $('commitBtn');
+    btn.disabled = true;
+    setStatus('커밋 중…');
+    try {
+      // 기존 파일이 있으면 sha가 필요 (덮어쓰기)
+      let sha;
+      try {
+        const cur = await gh(`/repos/${repo}/contents/${encPath(path)}?ref=${encodeURIComponent(branch)}`);
+        if (Array.isArray(cur)) throw Object.assign(new Error(`"${path}"는 폴더입니다`), { status: 0 });
+        sha = cur.sha;
+      } catch (e) {
+        if (e.status !== 404) throw e; // 404 = 새 파일
+      }
+      if (sha && !confirm(`${repo}의 "${path}" 파일을 덮어쓸까요?`)) return setStatus('취소됨');
+
+      const message = $('message').value.trim() || `${sha ? 'Update' : 'Add'} ${path} via cnation File`;
+      const res = await gh(`/repos/${repo}/contents/${encPath(path)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ message, content: toBase64(text), branch, ...(sha ? { sha } : {}) })
+      });
+      statusEl.className = 'ok';
+      statusEl.textContent = `✅ 커밋 완료: ${path} `;
+      const a = Object.assign(document.createElement('a'), {
+        href: res.commit.html_url, target: '_blank', rel: 'noopener', textContent: '(커밋 보기)'
+      });
+      statusEl.appendChild(a);
+      $('message').value = '';
+    } catch (e) {
+      setStatus('커밋 실패: ' + friendly(e), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  updateTarget();
+  if (store.get(KEY.token)) loadRepos();
 </script>
 </body>
 </html>
