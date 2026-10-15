@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Clip Saver</title>
+<style>
+  :root {
+    --bg: #f5f5f7; --card: #fff; --text: #1d1d1f; --muted: #6e6e73;
+    --border: #d2d2d7; --accent: #0071e3; --ok: #1a7f37; --err: #c62828;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000; --card: #1c1c1e; --text: #f5f5f7; --muted: #98989d;
+      --border: #38383a; --accent: #0a84ff; --ok: #30d158; --err: #ff453a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 22px; margin: 4px 0; }
+  label { font-size: 13px; color: var(--muted); }
+  input, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--card);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+  }
+  /* 16px 이상이어야 iOS가 포커스 시 자동 확대하지 않음 */
+  input { font-size: 16px; }
+  textarea { font: 14px/1.4 ui-monospace, Menlo, monospace; min-height: 45vh; resize: vertical; }
+  .row { display: flex; gap: 8px; }
+  button {
+    flex: 1; font: inherit; font-weight: 600; padding: 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:active { opacity: .7; }
+  #status { min-height: 1.4em; font-size: 14px; color: var(--muted); }
+  #status.ok { color: var(--ok); }
+  #status.err { color: var(--err); }
+</style>
+</head>
+<body>
+<main>
+  <h1>📋 Clip Saver</h1>
+
+  <div>
+    <label for="filename">파일명</label>
+    <input id="filename" value="index.html" autocapitalize="off" autocorrect="off" spellcheck="false">
+  </div>
+
+  <div class="row">
+    <button id="pasteBtn">클립보드 붙여넣기</button>
+    <button id="clearBtn">지우기</button>
+  </div>
+
+  <div>
+    <label for="content">내용 <span id="count"></span></label>
+    <textarea id="content" placeholder="여기에 붙여넣거나 위 버튼을 누르세요" spellcheck="false"></textarea>
+  </div>
+
+  <button id="saveBtn" class="primary">💾 기기에 저장</button>
+  <div id="status"></div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const nameEl = $('filename'), contentEl = $('content'), statusEl = $('status');
+
+  // 마지막으로 쓴 파일명 기억 (선택 사항이므로 실패해도 무시)
+  try { const n = localStorage.getItem('clipSaver.filename'); if (n) nameEl.value = n; } catch {}
+
+  function setStatus(msg, type = '') { statusEl.textContent = msg; statusEl.className = type; }
+  function updateCount() { $('count').textContent = contentEl.value ? `(${contentEl.value.length.toLocaleString()}자)` : ''; }
+  contentEl.addEventListener('input', updateCount);
+
+  function mimeFor(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    return {
+      html: 'text/html', htm: 'text/html', css: 'text/css', js: 'text/javascript',
+      json: 'application/json', md: 'text/markdown', csv: 'text/csv', svg: 'image/svg+xml',
+      xml: 'application/xml', txt: 'text/plain'
+    }[ext] || 'text/plain';
+  }
+
+  $('pasteBtn').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      contentEl.value = text;
+      updateCount();
+      setStatus(text ? '붙여넣기 완료' : '클립보드가 비어 있습니다', text ? 'ok' : 'err');
+    } catch (e) {
+      // 권한 거부 또는 미지원 브라우저 → 직접 붙여넣기 안내
+      contentEl.focus();
+      setStatus('클립보드 읽기 실패: 입력칸을 길게 눌러 직접 붙여넣어 주세요', 'err');
+    }
+  });
+
+  $('clearBtn').addEventListener('click', () => { contentEl.value = ''; updateCount(); setStatus(''); });
+
+  $('saveBtn').addEventListener('click', async () => {
+    const name = nameEl.value.trim() || 'index.html';
+    const text = contentEl.value;
+    if (!text) return setStatus('저장할 내용이 없습니다', 'err');
+    try { localStorage.setItem('clipSaver.filename', name); } catch {}
+
+    // 1순위: 공유 시트 (iPhone에서 "파일에 저장" 선택 가능)
+    for (const type of [mimeFor(name), 'text/plain']) {
+      const file = new File([text], name, { type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          return setStatus(`"${name}" 공유 시트 열림 → "파일에 저장"을 선택하세요`, 'ok');
+        } catch (e) {
+          if (e.name === 'AbortError') return setStatus('취소됨');
+          break; // 다른 오류면 다운로드 방식으로
+        }
+      }
+    }
+
+    // 2순위: 일반 다운로드 (PC / 공유 미지원 브라우저)
+    const url = URL.createObjectURL(new Blob([text], { type: mimeFor(name) }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    setStatus(`"${name}" 다운로드 시작`, 'ok');
+  });
+</script>
+</body>
+</html>
