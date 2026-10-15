@@ -14,16 +14,19 @@
 - 배포: Vercel에서 이 레포를 Import하면 별도 설정 없이 루트 `index.html`이 그대로 배포됨(아직 배포 여부 미확인).
 - 정리할 것: 잘못 올린 `cnation-ft` 레포의 `claude/clip-saver` 브랜치가 남아 있음(`main` 영향 없음). 사용자가 원하면 삭제.
 
-## GitHub 커밋 기능 (구현됨, `claude/github-commit` 브랜치)
+## GitHub 커밋 기능 (PR #3로 main 머지, GitHub Pages 배포)
 - 파일: `index.html`(앱), `apple-touch-icon.png`·`icon-192.png`·`icon-512.png`(임시 아이콘, Python PIL로 생성), `manifest.webmanifest`
 - 배포 계획: 사용자가 GitHub Pages로 배포하고 iPhone 홈 화면에 추가해서 사용
 - 토큰 저장: localStorage `clipSaver.ghToken`. 홈 화면 웹앱은 Safari와 저장소가 분리되고 ITP 7일 삭제 대상이 아님. `navigator.storage.persist()` 요청. 토큰 입력칸은 username+password 폼이라 iCloud 키체인 자동완성으로 복구 가능. PIN 잠금은 쓰지 않기로 함
 - 링크를 아는 타인은 토큰이 없으므로 커밋 불가. 토큰을 코드나 인증 없는 서버 함수에 넣지 말 것
 - 레포/브랜치/폴더 선택 기억, 기존 파일 덮어쓰기 전 확인창, 커밋 메시지 비우면 자동 생성
-- Playwright + 모의 GitHub API로만 테스트함. 실제 기기·실제 API 테스트는 아직
+- 2026-10-15 사용자가 iPhone 홈 화면 앱에서 실제 커밋 성공 확인
+- 배포 주소: https://civilizednation.github.io/cnation-file/ (GitHub Pages, `main` / root, `.nojekyll`)
+- 사용자 토큰: Fine-grained PAT `cnation-file-commit` (All repositories, Contents: Read and write, 만료 2027-01-13 → 만료 전 Regenerate 후 앱에 다시 입력). 처음엔 Repository access가 Public으로 남아 403이 났었음
+- 허브 `civilizednation/cnation-app`의 `app-data.js` UTILITY 맨 위에 "cnation File"로 등록됨 (v1.25.2)
 
 설계 메모:
-1. 인증: Fine-grained PAT(대상 레포만, `Contents: Read and write`)를 앱에 한 번 입력해서 localStorage에 저장
+1. 인증: Fine-grained PAT(All repositories, `Contents: Read and write`)를 앱에 한 번 입력해서 localStorage에 저장
 2. 레포/브랜치/경로 선택: `GET /user/repos` 등으로 목록을 불러와 드롭다운
 3. 업로드+커밋: `PUT /repos/{owner}/{repo}/contents/{path}`. 내용은 base64(UTF-8 안전하게 인코딩), 커밋 메시지 포함. 기존 파일 덮어쓰기는 먼저 GET으로 `sha`를 받아 함께 전송
 4. 레포가 Vercel에 연결돼 있으면 커밋 즉시 자동 배포 → "폰에서 복사 → 앱에서 커밋 → 사이트 반영"
