@@ -11,6 +11,8 @@
   - 확장자별 MIME(html, css, js, json, md 등), 다크모드 지원
 - 클립보드 읽기와 공유는 HTTPS에서만 동작함(`file://` 불가). Vercel 또는 GitHub Pages로 배포해서 쓰고, Safari "홈 화면에 추가"로 앱처럼 사용.
 - 실제 iPhone 기기 테스트는 아직 안 함.
+- 배포: Vercel에서 이 레포를 Import하면 별도 설정 없이 루트 `index.html`이 그대로 배포됨(아직 배포 여부 미확인).
+- 정리할 것: 잘못 올린 `cnation-ft` 레포의 `claude/clip-saver` 브랜치가 남아 있음(`main` 영향 없음). 사용자가 원하면 삭제.
 
 ## 다음 후보 작업: 앱에서 GitHub로 바로 커밋
 서버 없이 브라우저에서 GitHub REST API 직접 호출:
