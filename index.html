@@ -52,6 +52,7 @@
   .hint a { color: var(--accent); }
   #target { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); word-break: break-all; }
   #status a { color: inherit; }
+  #newTaskBtn { flex: none; margin-top: 8px; }
   input[type=checkbox] { width: auto; margin: 0 6px 0 0; vertical-align: middle; }
   input[type=file] { padding: 10px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px;
@@ -154,6 +155,7 @@
       </p>
     </div>
   </details>
+  <button id="newTaskBtn" hidden>🔄 새로운 작업</button>
 </main>
 
 <script>
@@ -281,7 +283,7 @@
     try {
       const repos = await gh('/user/repos?per_page=100&sort=pushed');
       repoEl.innerHTML = '';
-      if (!repos.length) repoEl.add(new Option('접근 가능한 레포가 없습니다', ''));
+      repoEl.add(new Option(repos.length ? '레포를 선택하세요' : '접근 가능한 레포가 없습니다', ''));
       for (const r of repos) repoEl.add(new Option(r.full_name, r.full_name));
       const saved = store.get(KEY.repo);
       if (saved && repos.some((r) => r.full_name === saved)) repoEl.value = saved;
@@ -297,7 +299,7 @@
   async function loadBranches() {
     branchEl.innerHTML = '';
     const repo = repoEl.value;
-    if (!repo) return updateTarget();
+    if (!repo) { store.set(KEY.repo, ''); return updateTarget(); }
     store.set(KEY.repo, repo);
     try {
       const [info, branches] = await Promise.all([
@@ -374,6 +376,7 @@
         href: res.commit.html_url, target: '_blank', rel: 'noopener', textContent: '(커밋 보기)'
       });
       statusEl.appendChild(a);
+      $('newTaskBtn').hidden = false;
       $('message').value = '';
     } catch (e) {
       setStatus('커밋 실패: ' + friendly(e), 'err');
@@ -554,12 +557,31 @@
       statusEl.appendChild(Object.assign(document.createElement('a'), {
         href: `https://github.com/${repo}/commit/${commit.sha}`, target: '_blank', rel: 'noopener', textContent: '(커밋 보기)'
       }));
+      $('newTaskBtn').hidden = false;
       $('message').value = '';
     } catch (e) {
       setStatus('ZIP 커밋 실패: ' + friendly(e), 'err');
     } finally {
       btn.disabled = !zipEntries.length;
     }
+  });
+
+  // ───────── 새로운 작업: 토큰만 남기고 처음 실행한 상태로 되돌림 ─────────
+  $('newTaskBtn').addEventListener('click', () => {
+    for (const k of ['clipSaver.filename', KEY.repo, KEY.branch, KEY.folder]) store.set(k, '');
+    nameEl.value = 'index.html';
+    contentEl.value = ''; updateCount();
+    folderEl.value = ''; $('message').value = '';
+    repoEl.value = ''; branchEl.innerHTML = '';
+    $('zipInput').value = '';
+    zipEntries = []; zipBuf = null; zipName = '';
+    $('stripRow').hidden = true; $('stripTop').checked = true;
+    renderZipList();
+    $('zipPanel').open = false; $('ghPanel').open = false;
+    setStatus('');
+    $('newTaskBtn').hidden = true;
+    updateTarget();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   updateTarget();
