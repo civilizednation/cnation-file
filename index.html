@@ -54,6 +54,8 @@
   #status a { color: inherit; }
   input[type=checkbox] { width: auto; margin: 0 6px 0 0; vertical-align: middle; }
   input[type=file] { padding: 10px; }
+  #targetFields { display: flex; flex-direction: column; gap: 10px; }
+  #zipTargetSlot:not(:empty) { padding-bottom: 6px; border-bottom: 1px solid var(--border); }
   #zipList { list-style: none; margin: 0; padding: 0; max-height: 40vh; overflow: auto;
     font: 13px/1.5 ui-monospace, Menlo, monospace; border: 1px solid var(--border); border-radius: 10px; }
   #zipList:empty { display: none; }
@@ -95,12 +97,15 @@
   <details id="zipPanel">
     <summary>📦 ZIP 업로드 (압축 풀어서 한 번에 커밋)</summary>
     <div>
+      <!-- 패널을 열면 GitHub 설정의 레포·브랜치·폴더·메시지 입력칸을 이 자리로 옮겨 옴 -->
+      <div id="zipTargetSlot"></div>
+      <label for="zipInput">ZIP 파일</label>
       <input type="file" id="zipInput" accept=".zip,application/zip">
       <label id="stripRow" hidden><input type="checkbox" id="stripTop" checked>최상위 폴더 "<span id="topName"></span>/" 없이 올리기</label>
       <div id="zipSummary" class="hint"></div>
       <ul id="zipList"></ul>
       <button id="zipCommitBtn" class="primary" disabled>⬆️ ZIP 전체 커밋</button>
-      <p class="hint">레포·브랜치·폴더 경로·커밋 메시지는 아래 GitHub 설정 값을 씁니다. 모든 파일이 커밋 1개로 올라가고,
+      <p class="hint">위에서 고른 레포·브랜치·폴더에 모든 파일이 커밋 1개로 올라갑니다. ZIP을 고르기 전이나 후 언제든 바꿀 수 있고,
         같은 경로의 파일은 덮어쓰며 ZIP에 없는 기존 파일은 그대로 둡니다.</p>
     </div>
   </details>
@@ -124,6 +129,7 @@
         Repository access는 <b>All repositories</b>, Permissions는 <b>+ → Contents → Read and write</b>, 만료일 지정.
         토큰은 이 기기에만 저장됩니다. 홈 화면에 추가한 앱 안에서 입력하세요.
       </p>
+      <div id="ghTargetSlot"><div id="targetFields">
       <div>
         <label for="repo">레포</label>
         <select id="repo"><option value="">토큰을 먼저 저장하세요</option></select>
@@ -140,6 +146,7 @@
         <label for="message">커밋 메시지 (비우면 자동 생성)</label>
         <input id="message" placeholder="Update index.html via cnation File">
       </div>
+      </div></div>
     </div>
   </details>
 </main>
@@ -469,6 +476,11 @@
     renderZipList();
   });
   $('stripTop').addEventListener('change', renderZipList);
+
+  // ZIP 패널이 열려 있는 동안 레포·브랜치·폴더·메시지 입력칸을 ZIP 패널 안에 표시 (같은 요소를 옮기므로 값이 그대로 공유됨)
+  $('zipPanel').addEventListener('toggle', () => {
+    ($('zipPanel').open ? $('zipTargetSlot') : $('ghTargetSlot')).appendChild($('targetFields'));
+  });
   folderEl.addEventListener('input', () => zipEntries.length && renderZipList());
 
   // 동시 요청 수를 제한해서 순서대로 처리
