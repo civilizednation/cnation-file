@@ -35,7 +35,7 @@
   }
   /* 16px 이상이어야 iOS가 포커스 시 자동 확대하지 않음 */
   input, select { font-size: 16px; }
-  textarea { font: 14px/1.4 ui-monospace, Menlo, monospace; min-height: 45vh; resize: vertical; }
+  textarea { font: 14px/1.4 ui-monospace, Menlo, monospace; min-height: 22vh; resize: vertical; }
   .row { display: flex; gap: 8px; }
   button {
     flex: 1; font: inherit; font-weight: 600; padding: 14px; border-radius: 10px;
@@ -54,8 +54,11 @@
   #status a { color: inherit; }
   input[type=checkbox] { width: auto; margin: 0 6px 0 0; vertical-align: middle; }
   input[type=file] { padding: 10px; }
-  #targetFields { display: flex; flex-direction: column; gap: 10px; }
-  #zipTargetSlot:not(:empty) { padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+    display: flex; flex-direction: column; gap: 10px; }
+  .card-title { font-weight: 600; }
+  .card input, .card select { background: var(--bg); }
+  .card .row > div { min-width: 0; }
   #zipList { list-style: none; margin: 0; padding: 0; max-height: 40vh; overflow: auto;
     font: 13px/1.5 ui-monospace, Menlo, monospace; border: 1px solid var(--border); border-radius: 10px; }
   #zipList:empty { display: none; }
@@ -87,6 +90,28 @@
     <textarea id="content" placeholder="여기에 붙여넣거나 위 버튼을 누르세요" spellcheck="false"></textarea>
   </div>
 
+  <section class="card" id="targetFields">
+    <div class="card-title">📁 커밋 위치 (GitHub)</div>
+    <div class="row">
+      <div style="flex:2">
+        <label for="repo">레포</label>
+        <select id="repo"><option value="">토큰을 먼저 저장하세요</option></select>
+      </div>
+      <div style="flex:1">
+        <label for="branch">브랜치</label>
+        <select id="branch"></select>
+      </div>
+    </div>
+    <div>
+      <label for="folder">폴더 경로 (비우면 레포 루트)</label>
+      <input id="folder" placeholder="예: docs/notes" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div>
+      <label for="message">커밋 메시지 (비우면 자동 생성)</label>
+      <input id="message" placeholder="예: 로그인 화면 문구 수정">
+    </div>
+  </section>
+
   <div class="row">
     <button id="saveBtn" class="primary">💾 기기에 저장</button>
     <button id="commitBtn" class="primary">⬆️ GitHub 커밋</button>
@@ -97,15 +122,13 @@
   <details id="zipPanel">
     <summary>📦 ZIP 업로드 (압축 풀어서 한 번에 커밋)</summary>
     <div>
-      <!-- 패널을 열면 GitHub 설정의 레포·브랜치·폴더·메시지 입력칸을 이 자리로 옮겨 옴 -->
-      <div id="zipTargetSlot"></div>
       <label for="zipInput">ZIP 파일</label>
       <input type="file" id="zipInput" accept=".zip,application/zip">
       <label id="stripRow" hidden><input type="checkbox" id="stripTop" checked>최상위 폴더 "<span id="topName"></span>/" 없이 올리기</label>
       <div id="zipSummary" class="hint"></div>
       <ul id="zipList"></ul>
       <button id="zipCommitBtn" class="primary" disabled>⬆️ ZIP 전체 커밋</button>
-      <p class="hint">위에서 고른 레포·브랜치·폴더에 모든 파일이 커밋 1개로 올라갑니다. ZIP을 고르기 전이나 후 언제든 바꿀 수 있고,
+      <p class="hint">위 📁 커밋 위치에서 고른 레포·브랜치·폴더에 모든 파일이 커밋 1개로 올라갑니다. ZIP을 고르기 전이나 후 언제든 바꿀 수 있고,
         같은 경로의 파일은 덮어쓰며 ZIP에 없는 기존 파일은 그대로 둡니다.</p>
     </div>
   </details>
@@ -129,24 +152,6 @@
         Repository access는 <b>All repositories</b>, Permissions는 <b>+ → Contents → Read and write</b>, 만료일 지정.
         토큰은 이 기기에만 저장됩니다. 홈 화면에 추가한 앱 안에서 입력하세요.
       </p>
-      <div id="ghTargetSlot"><div id="targetFields">
-      <div>
-        <label for="repo">레포</label>
-        <select id="repo"><option value="">토큰을 먼저 저장하세요</option></select>
-      </div>
-      <div>
-        <label for="branch">브랜치</label>
-        <select id="branch"></select>
-      </div>
-      <div>
-        <label for="folder">폴더 경로 (비우면 레포 루트)</label>
-        <input id="folder" placeholder="예: docs/notes" autocapitalize="off" autocorrect="off" spellcheck="false">
-      </div>
-      <div>
-        <label for="message">커밋 메시지 (비우면 자동 생성)</label>
-        <input id="message" placeholder="Update index.html via cnation File">
-      </div>
-      </div></div>
     </div>
   </details>
 </main>
@@ -338,7 +343,7 @@
       return setStatus('GitHub 토큰이 없습니다. 아래 설정에서 입력하세요', 'err');
     }
     const repo = repoEl.value, branch = branchEl.value;
-    if (!repo || !branch) { $('ghPanel').open = true; return setStatus('레포와 브랜치를 선택하세요', 'err'); }
+    if (!repo || !branch) { repoEl.focus(); return setStatus('📁 커밋 위치에서 레포와 브랜치를 선택하세요', 'err'); }
 
     const path = filePath();
     const name = path.split('/').pop();
@@ -477,10 +482,6 @@
   });
   $('stripTop').addEventListener('change', renderZipList);
 
-  // ZIP 패널이 열려 있는 동안 레포·브랜치·폴더·메시지 입력칸을 ZIP 패널 안에 표시 (같은 요소를 옮기므로 값이 그대로 공유됨)
-  $('zipPanel').addEventListener('toggle', () => {
-    ($('zipPanel').open ? $('zipTargetSlot') : $('ghTargetSlot')).appendChild($('targetFields'));
-  });
   folderEl.addEventListener('input', () => zipEntries.length && renderZipList());
 
   // 동시 요청 수를 제한해서 순서대로 처리
@@ -497,7 +498,7 @@
     if (!zipEntries.length) return setStatus('먼저 ZIP 파일을 고르세요', 'err');
     if (!store.get(KEY.token)) { $('ghPanel').open = true; return setStatus('GitHub 토큰이 없습니다. 아래 설정에서 입력하세요', 'err'); }
     const repo = repoEl.value, branch = branchEl.value;
-    if (!repo || !branch) { $('ghPanel').open = true; return setStatus('레포와 브랜치를 선택하세요', 'err'); }
+    if (!repo || !branch) { repoEl.focus(); return setStatus('📁 커밋 위치에서 레포와 브랜치를 선택하세요', 'err'); }
 
     const items = zipEntries.map((e) => ({ e, path: zipTargetPath(e) }));
     const dup = items.find((it, i) => items.findIndex((x) => x.path === it.path) !== i);

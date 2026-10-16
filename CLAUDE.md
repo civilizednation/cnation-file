@@ -30,7 +30,7 @@
 - `__MACOSX/`, `.DS_Store`, `._*`, `Thumbs.db`는 제외. UTF-8 플래그 없는 파일명은 UTF-8 시도 후 EUC-KR(Windows 한글 ZIP)로 해석. `..` 경로는 거부
 - 모든 파일이 한 폴더 안에 있으면(iPhone 파일 앱에서 폴더 압축) "최상위 폴더 없이 올리기" 체크박스 표시(기본 체크)
 - 커밋: Git Data API (ref → base commit/tree → blob 4개씩 병렬 → tree(base_tree) → commit → ref PATCH). 같은 경로는 덮어쓰고 ZIP에 없는 기존 파일은 유지. 확인창에 새 파일/덮어쓰기 개수 표시
-- ZIP 패널을 열면 GitHub 설정의 레포·브랜치·폴더·메시지 입력칸(`#targetFields`)을 DOM째 ZIP 패널 상단(`#zipTargetSlot`)으로 옮겨 표시, 닫으면 설정 패널(`#ghTargetSlot`)로 되돌림 → 값 공유, ZIP 선택 전후 언제든 레포 변경 가능. 빈 레포는 불가(파일 하나 먼저 커밋 필요)
+- 레포·브랜치·폴더·커밋 메시지는 메인 화면 "📁 커밋 위치" 카드(`#targetFields`, 내용 입력칸 아래·저장 버튼 위)에서 공통으로 선택 → 클립보드 커밋과 ZIP 커밋이 같은 값 사용. 내용 입력칸 높이 22vh. 빈 레포는 ZIP 불가(파일 하나 먼저 커밋 필요)
 - Playwright + 모의 API로 테스트(바이너리·한글 내용/파일명, 최상위 폴더, 잘못된 ZIP). 실제 기기 테스트는 아직
 
 설계 메모:
