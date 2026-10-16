@@ -24,6 +24,15 @@
 - 사용자 토큰: Fine-grained PAT `cnation-file-commit` (All repositories, Contents: Read and write, 만료 2027-01-13 → 만료 전 Regenerate 후 앱에 다시 입력). 처음엔 Repository access가 Public으로 남아 403이 났었음
 - 허브 `civilizednation/cnation-app`의 `app-data.js` UTILITY 맨 위에 "cnation File"로 등록됨 (v1.25.2)
 
+## ZIP 업로드 기능
+- 📦 ZIP 업로드 패널: ZIP을 고르면 브라우저에서 바로 풀어서 파일 목록 미리보기 → 커밋 1개로 전체 업로드
+- 외부 라이브러리 없음: ZIP 목차(central directory)를 직접 파싱, 압축 해제는 `DecompressionStream('deflate-raw')` (iOS 16.4+). 저장(0)·deflate(8) 방식만, ZIP64·암호 ZIP 미지원
+- `__MACOSX/`, `.DS_Store`, `._*`, `Thumbs.db`는 제외. UTF-8 플래그 없는 파일명은 UTF-8 시도 후 EUC-KR(Windows 한글 ZIP)로 해석. `..` 경로는 거부
+- 모든 파일이 한 폴더 안에 있으면(iPhone 파일 앱에서 폴더 압축) "최상위 폴더 없이 올리기" 체크박스 표시(기본 체크)
+- 커밋: Git Data API (ref → base commit/tree → blob 4개씩 병렬 → tree(base_tree) → commit → ref PATCH). 같은 경로는 덮어쓰고 ZIP에 없는 기존 파일은 유지. 확인창에 새 파일/덮어쓰기 개수 표시
+- GitHub 설정의 레포·브랜치·폴더 경로·커밋 메시지를 그대로 사용. 빈 레포는 불가(파일 하나 먼저 커밋 필요)
+- Playwright + 모의 API로 테스트(바이너리·한글 내용/파일명, 최상위 폴더, 잘못된 ZIP). 실제 기기 테스트는 아직
+
 설계 메모:
 1. 인증: Fine-grained PAT(All repositories, `Contents: Read and write`)를 앱에 한 번 입력해서 localStorage에 저장
 2. 레포/브랜치/경로 선택: `GET /user/repos` 등으로 목록을 불러와 드롭다운
