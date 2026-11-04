@@ -126,6 +126,8 @@
       <label for="zipInput">ZIP 파일</label>
       <input type="file" id="zipInput" accept=".zip,application/zip">
       <label id="stripRow" hidden><input type="checkbox" id="stripTop" checked>최상위 폴더 "<span id="topName"></span>/" 없이 올리기</label>
+      <label id="wfRow" hidden><input type="checkbox" id="skipWf">.github/workflows 파일 <span id="wfCount"></span>개 빼고 올리기
+        <span class="hint">(토큰에 Workflows 권한이 없을 때)</span></label>
       <div id="zipSummary" class="hint"></div>
       <ul id="zipList"></ul>
       <button id="zipCommitBtn" class="primary" disabled>⬆️ ZIP 전체 커밋</button>
@@ -271,7 +273,7 @@
   }
   function friendly(e) {
     if (e.status === 401) return '토큰이 만료되었거나 잘못되었습니다. GitHub 설정에서 토큰을 다시 입력하세요';
-    if (e.status === 403) return '권한이 없습니다. 토큰에 이 레포의 Contents: Read and write 권한이 있는지 확인하세요';
+    if (e.status === 403) return `권한이 없습니다. 토큰에 이 레포의 Contents: Read and write 권한이 있는지 확인하세요 (GitHub: ${e.message})`;
     if (e.status === 404) return '레포나 브랜치를 찾을 수 없습니다 (토큰의 레포 접근 범위 확인)';
     if (e.status === 409) return '충돌: 그 사이 파일이 바뀌었습니다. 다시 시도하세요';
     return e.message || String(e);
@@ -441,6 +443,9 @@
     const first = zipEntries[0] && zipEntries[0].path.split('/')[0];
     return first && zipEntries.every((e) => e.path.includes('/') && e.path.split('/')[0] === first) ? first : '';
   }
+  // .github/workflows/ 파일은 토큰에 Workflows 권한이 따로 있어야 올릴 수 있음
+  const isWorkflow = (e) => zipTargetPath(e).startsWith('.github/workflows/'); // 레포 루트에 있을 때만 워크플로로 취급됨
+  const activeEntries = () => $('skipWf').checked ? zipEntries.filter((e) => !isWorkflow(e)) : zipEntries;
   function zipTargetPath(e) {
     const top = topFolder();
     const rel = top && $('stripTop').checked ? e.path.slice(top.length + 1) : e.path;
@@ -450,15 +455,19 @@
   function renderZipList() {
     const list = $('zipList');
     list.textContent = '';
-    for (const e of zipEntries) {
+    const wf = zipEntries.filter(isWorkflow).length;
+    $('wfRow').hidden = !wf;
+    $('wfCount').textContent = wf;
+    const entries = activeEntries();
+    for (const e of entries) {
       const li = document.createElement('li');
       li.append(Object.assign(document.createElement('span'), { textContent: zipTargetPath(e) }),
                 Object.assign(document.createElement('span'), { textContent: fmtSize(e.usize) }));
       list.appendChild(li);
     }
-    const total = zipEntries.reduce((a, e) => a + e.usize, 0);
-    $('zipSummary').textContent = zipEntries.length ? `${zipName} · 파일 ${zipEntries.length}개 · ${fmtSize(total)}` : '';
-    $('zipCommitBtn').disabled = !zipEntries.length;
+    const total = entries.reduce((a, e) => a + e.usize, 0);
+    $('zipSummary').textContent = zipEntries.length ? `${zipName} · 파일 ${entries.length}개 · ${fmtSize(total)}` : '';
+    $('zipCommitBtn').disabled = !entries.length;
   }
 
   $('zipInput').addEventListener('change', async () => {
@@ -466,6 +475,7 @@
     zipEntries = []; zipBuf = null; zipName = '';
     $('stripRow').hidden = true;
     $('stripTop').checked = true;
+    $('skipWf').checked = false;
     if (file) {
       try {
         zipBuf = await file.arrayBuffer();
@@ -484,6 +494,7 @@
     renderZipList();
   });
   $('stripTop').addEventListener('change', renderZipList);
+  $('skipWf').addEventListener('change', renderZipList);
 
   folderEl.addEventListener('input', () => zipEntries.length && renderZipList());
 
@@ -503,7 +514,7 @@
     const repo = repoEl.value, branch = branchEl.value;
     if (!repo || !branch) { repoEl.focus(); return setStatus('📁 커밋 위치에서 레포와 브랜치를 선택하세요', 'err'); }
 
-    const items = zipEntries.map((e) => ({ e, path: zipTargetPath(e) }));
+    const items = activeEntries().map((e) => ({ e, path: zipTargetPath(e) }));
     const dup = items.find((it, i) => items.findIndex((x) => x.path === it.path) !== i);
     if (dup) return setStatus(`같은 경로의 파일이 두 번 들어 있습니다: ${dup.path}`, 'err');
 
@@ -548,7 +559,7 @@
       try {
         await gh(`/repos/${repo}/git/refs/heads/${encPath(branch)}`, { method: 'PATCH', body: JSON.stringify({ sha: commit.sha }) });
       } catch (e) {
-        if (e.status === 422) throw new Error('그 사이 브랜치에 다른 커밋이 올라왔습니다. 다시 시도하세요');
+        if (e.status === 422 && /fast.?forward/i.test(e.message)) throw new Error('그 사이 브랜치에 다른 커밋이 올라왔습니다. 다시 시도하세요');
         throw e;
       }
 
@@ -560,9 +571,17 @@
       $('newTaskBtn').hidden = false;
       $('message').value = '';
     } catch (e) {
-      setStatus('ZIP 커밋 실패: ' + friendly(e), 'err');
+      const hasWf = items.some((it) => isWorkflow(it.e));
+      if (hasWf && (e.status === 403 || e.status === 404)) {
+        $('wfRow').hidden = false;
+        setStatus('ZIP 커밋 실패: ZIP에 .github/workflows 파일이 있어서 토큰에 Workflows 권한이 필요합니다. ' +
+          'GitHub 토큰 설정에서 Permissions → + → Workflows → Read and write를 추가하거나(토큰 값은 그대로), ' +
+          '아래 "workflows 파일 빼고 올리기"를 체크한 뒤 다시 시도하세요', 'err');
+      } else {
+        setStatus('ZIP 커밋 실패: ' + friendly(e), 'err');
+      }
     } finally {
-      btn.disabled = !zipEntries.length;
+      btn.disabled = !activeEntries().length;
     }
   });
 
@@ -575,7 +594,7 @@
     repoEl.value = ''; branchEl.innerHTML = '';
     $('zipInput').value = '';
     zipEntries = []; zipBuf = null; zipName = '';
-    $('stripRow').hidden = true; $('stripTop').checked = true;
+    $('stripRow').hidden = true; $('stripTop').checked = true; $('skipWf').checked = false;
     renderZipList();
     $('zipPanel').open = false; $('ghPanel').open = false;
     setStatus('');
