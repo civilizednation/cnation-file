@@ -49,6 +49,12 @@
   details > div { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
   details input, details select { background: var(--bg); }
   .hint { font-size: 13px; color: var(--muted); margin: 0; }
+  #helpPanel h3 { font-size: 15px; margin: 8px 0 0; }
+  #helpPanel ol, #helpPanel ul { margin: 0; padding-left: 20px; font-size: 14px; }
+  #helpPanel li { margin: 3px 0; }
+  #helpPanel p { margin: 0; font-size: 14px; }
+  #helpPanel code { font: 13px ui-monospace, Menlo, monospace; background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+  #helpPanel a { color: var(--accent); }
   .hint a { color: var(--accent); }
   #target { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); word-break: break-all; }
   #status a { color: inherit; }
@@ -153,11 +159,79 @@
       <p class="hint">
         <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">토큰 만들기</a>:
         Repository access는 <b>All repositories</b>, Permissions는 <b>+ → Contents → Read and write</b>, 만료일 지정.
-        토큰은 이 기기에만 저장됩니다. 홈 화면에 추가한 앱 안에서 입력하세요.
+        토큰은 이 기기에만 저장됩니다. 자세한 방법은 맨 아래 ❓ 사용 방법을 보세요.
       </p>
     </div>
   </details>
   <button id="newTaskBtn" hidden>🔄 새로운 작업</button>
+
+  <details id="helpPanel">
+    <summary>❓ 사용 방법 · 토큰 설정 안내</summary>
+    <div>
+      <h3>1. 기본 사용법</h3>
+      <ol>
+        <li><b>파일명</b>을 정하고, <b>클립보드 붙여넣기</b>로 내용을 넣습니다.</li>
+        <li><b>💾 기기에 저장</b>: iPhone은 공유 시트에서 "파일에 저장", PC는 바로 다운로드됩니다. (토큰 필요 없음)</li>
+        <li><b>⬆️ GitHub 커밋</b>: 📁 커밋 위치에서 레포·브랜치·폴더를 고른 뒤 누르면 그 파일 하나가 커밋됩니다.</li>
+        <li><b>📦 ZIP 업로드</b>: ZIP을 고르면 앱 안에서 풀어 목록을 보여 주고, 전체를 커밋 1개로 올립니다. 같은 경로 파일은 덮어쓰고 나머지 기존 파일은 그대로 둡니다.</li>
+        <li>커밋이 끝나면 맨 아래 <b>🔄 새로운 작업</b>으로 입력값을 모두 비우고 처음 상태로 돌아갈 수 있습니다. (토큰은 유지)</li>
+      </ol>
+
+      <h3>2. GitHub 토큰 만들기 (처음 한 번)</h3>
+      <ol>
+        <li>GitHub 로그인 → <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained 토큰 만들기</a>
+          (Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token)</li>
+        <li><b>Token name</b>: 기기별로 구분하면 편합니다. 예: <code>cnation-file-iphone</code>, <code>cnation-file-laptop</code></li>
+        <li><b>Expiration</b>: 90일 또는 Custom으로 원하는 날짜 (만료 전 GitHub가 이메일로 알려 줍니다)</li>
+        <li><b>Repository access</b>: <b>All repositories</b> (기본값 Public repositories는 읽기 전용이라 커밋이 안 됩니다)</li>
+        <li><b>Permissions</b> → <b>+</b> 버튼 → <b>Contents</b> → <b>Read and write</b> (Metadata: Read-only는 자동으로 붙음)</li>
+        <li>(선택) ZIP에 <code>.github/workflows/</code> 파일이 들어 있으면 <b>Workflows → Read and write</b>도 추가</li>
+        <li>탭에 <b>Repositories 2</b>(또는 3)가 보이는지 확인 → <b>Generate token</b> → <code>github_pat_…</code> 값을 <b>바로 복사</b> (다시 볼 수 없음)</li>
+      </ol>
+
+      <h3>3. 앱에 토큰 저장하기</h3>
+      <ol>
+        <li>아래 <b>⚙️ GitHub 설정</b>을 열고 토큰을 붙여넣은 뒤 <b>토큰 저장 · 레포 불러오기</b>를 누릅니다.</li>
+        <li>레포 목록이 뜨면 성공입니다. 토큰은 <b>이 기기의 이 브라우저에만</b> 저장되고, 다른 기기·다른 브라우저와 공유되지 않습니다.</li>
+        <li>브라우저가 "암호를 저장할까요?"라고 물으면 저장해 두세요. 나중에 토큰이 지워져도 자동완성으로 바로 다시 넣을 수 있습니다.</li>
+      </ol>
+
+      <h3>4. iPhone에서 쓸 때</h3>
+      <ul>
+        <li>Safari에서 이 주소를 열고 <b>공유 → 홈 화면에 추가</b> 후, <b>홈 화면 아이콘으로 실행</b>해서 그 안에서 토큰을 입력하세요.</li>
+        <li>Safari 탭에서 바로 쓰면 7일 이상 열지 않았을 때 토큰이 지워질 수 있습니다. 홈 화면 앱은 이 정리 대상이 아닙니다.</li>
+        <li>홈 화면 앱과 Safari는 저장 공간이 따로라서, Safari에 넣은 토큰은 홈 화면 앱에서 보이지 않습니다.</li>
+      </ul>
+
+      <h3>5. 노트북(PC·Mac)에서 쓸 때</h3>
+      <ul>
+        <li><b>Chrome·Edge 추천</b>: 주소를 열고 3번처럼 토큰을 저장하면 브라우저 데이터를 지우기 전까지 유지됩니다.
+          주소창의 설치 아이콘(또는 ⋮ 메뉴 → 앱으로 설치)으로 설치하면 앱처럼 따로 열 수 있습니다.</li>
+        <li><b>Mac Safari</b>: iPhone처럼 7일 정리 정책이 있으니 <b>파일 → Dock에 추가</b>로 설치해서 그 앱 안에서 토큰을 입력하세요.</li>
+        <li>시크릿(InPrivate) 창에서는 창을 닫으면 토큰이 사라집니다.</li>
+        <li>iPhone에서 쓰던 토큰을 그대로 쓰려면: iPhone <b>암호 앱</b>(또는 설정 → 암호)에서 <code>civilizednation.github.io</code> 항목을 찾아 복사합니다.
+          iCloud 암호가 연동된 Mac Safari나, Windows의 iCloud 암호 확장 프로그램에서는 자동완성으로 바로 채울 수도 있습니다.</li>
+        <li>암호를 저장해 두지 않았다면 GitHub에서 기존 토큰 값을 다시 볼 수 없으니, <b>노트북용 토큰을 새로 만드는 것</b>이 가장 간단합니다. (기기별로 따로 두면 하나를 잃어버려도 그것만 Delete하면 됩니다)</li>
+      </ul>
+
+      <h3>6. 토큰 관리</h3>
+      <ul>
+        <li><b>만료됐을 때</b>: GitHub 토큰 화면에서 <b>Regenerate token</b> → 새 값을 앱에 다시 저장 (권한 설정은 그대로 유지)</li>
+        <li><b>권한만 바꿀 때</b>: 토큰 화면 <b>Edit</b>에서 수정 → <b>Update</b>. 토큰 값은 그대로라 앱에 다시 넣을 필요 없음</li>
+        <li><b>기기를 잃어버렸을 때</b>: GitHub 토큰 목록에서 그 기기 토큰을 바로 <b>Delete</b></li>
+        <li><b>이 기기에서 지우기</b>: ⚙️ GitHub 설정 → <b>토큰 삭제</b></li>
+      </ul>
+
+      <h3>7. 자주 나오는 오류</h3>
+      <ul>
+        <li><b>권한이 없습니다(403)</b>: Repository access가 Public repositories로 되어 있거나 Contents 권한이 빠진 경우. ZIP에 workflows 파일이 있으면 Workflows 권한 필요</li>
+        <li><b>토큰이 만료되었거나 잘못되었습니다(401)</b>: 토큰을 다시 만들거나 Regenerate</li>
+        <li><b>빈 레포에는 ZIP을 올릴 수 없습니다</b>: 레포에 파일 하나(README 등)를 먼저 커밋</li>
+        <li><b>클립보드 읽기 실패</b>: 내용 칸을 길게 눌러 직접 붙여넣기</li>
+      </ul>
+      <p class="hint">토큰은 서버로 보내지 않고 GitHub API로만 직접 전송됩니다. 앱 주소를 아는 다른 사람은 토큰이 없어서 커밋할 수 없습니다.</p>
+    </div>
+  </details>
 </main>
 
 <script>

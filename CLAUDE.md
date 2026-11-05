@@ -39,6 +39,10 @@
 - 누르면 토큰만 남기고 처음 실행한 상태로 리셋: 파일명 `index.html`, 내용·폴더·커밋 메시지·ZIP 비움, 레포는 "레포를 선택하세요"(미선택), 브랜치 비움, 패널 닫힘, 맨 위로 스크롤. 저장된 파일명·레포·브랜치·폴더 기억값도 삭제
 - 레포 목록 맨 위에 "레포를 선택하세요" 빈 항목이 있어서, 저장된 레포가 없으면 아무 레포도 선택되지 않은 상태로 시작
 
+## 사용 안내 (앱 맨 아래 ❓ 사용 방법 · 토큰 설정 안내, `#helpPanel`)
+- 기본 사용법, 토큰 만들기(All repositories, Contents R/W, 선택 Workflows R/W), 앱에 저장, iPhone(홈 화면 앱), 노트북(Chrome·Edge 설치, Mac Safari는 Dock에 추가, 시크릿 창 주의, iPhone 암호 앱에서 토큰 복사 또는 기기별 토큰 새로 만들기), 토큰 관리(Regenerate·Edit·Delete), 자주 나오는 오류
+- 기능을 바꾸면 이 안내도 같이 고칠 것
+
 설계 메모:
 1. 인증: Fine-grained PAT(All repositories, `Contents: Read and write`)를 앱에 한 번 입력해서 localStorage에 저장
 2. 레포/브랜치/경로 선택: `GET /user/repos` 등으로 목록을 불러와 드롭다운
